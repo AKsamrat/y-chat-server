@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2020" /* Compile to modern JS */,
+    "lib": ["ES2020"] /* Include modern JS features */,
+    "module": "CommonJS" /* Use CommonJS for Node.js */,
+    "moduleResolution": "Node" /* Resolve modules like Node.js */,
+    "types": ["node"] /* Include Node.js type definitions */,
+
+    /* Import/Export Handling */
+    "esModuleInterop": true /* Allow default imports from CommonJS */,
+    "allowSyntheticDefaultImports": true /* Allow default imports without needing 'esModuleInterop' */,
+    "forceConsistentCasingInFileNames": true /* Enforce file name casing consistency */,
+
+    /* Type Checking */
+    "strict": true /* Enable all strict type checking */,
+    "skipLibCheck": true /* Skip type checking of .d.ts files */,
+
+    /* Output Settings */
+    "outDir": "dist" /* Output compiled files to ./dist */,
+    "rootDir": "src" /* Root folder for source files */,
+
+    /* Experimental */
+    "resolveJsonModule": true /* Allow importing JSON files */,
+    "verbatimModuleSyntax": false /* Avoid ESM/CJS conflict issues */
+  },
+  "include": ["src"] /* Compile all files in src folder */,
+  "exclude": ["node_modules"] /* Ignore node_modules */
+}
