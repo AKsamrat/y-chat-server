@@ -9,14 +9,18 @@ export enum UserRole {
 // User Schema Definition
 export interface IUser extends Document {
   email: string;
+  emailOtp: string;
+  emailOtpExpire: Date;
   password: string;
   phone: string;
-  name: string;
-  role: UserRole;
+  phoneSuffix: string;
+  username: string;
+  profilePicture: string;
+  about: string;
   lastLogin: Date;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  isOnline: boolean;
+  isVerified: boolean;
+  agreed: boolean;
 }
 
 export interface UserModel extends Model<IUser> {

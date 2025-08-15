@@ -3,20 +3,32 @@ import { StatusCodes } from "http-status-codes";
 import mongoose, { Schema } from "mongoose";
 import config from "../../config";
 import AppError from "../../errors/appError";
-import { IUser, UserModel, UserRole } from "./user.interface";
+import { IUser, UserModel } from "./user.interface";
 
 // Create the User schema based on the interface
 const userSchema = new Schema<IUser, UserModel>(
   {
-    name: {
+    username: {
       type: String,
-      required: true,
+      // required: true,
     },
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
+    },
+    emailOtp: {
+      type: String,
+    },
+    emailOtpExpire: {
+      type: Date,
+      // required: true,
+      // unique: true,
+      // lowercase: true,
+    },
+    profilePicture: {
+      type: String,
     },
     password: {
       type: String,
@@ -25,20 +37,30 @@ const userSchema = new Schema<IUser, UserModel>(
     phone: {
       type: String,
       required: true,
+      sparse: true,
     },
-    role: {
+    phoneSuffix: {
       type: String,
-      enum: [UserRole.ADMIN, UserRole.USER],
-      // default: UserRole.USER,
+      unique: true,
     },
-
+    about: {
+      type: String,
+    },
     lastLogin: {
       type: Date,
       default: Date.now,
     },
-    isActive: {
+    isOnline: {
       type: Boolean,
-      default: true,
+      default: false,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    agreed: {
+      type: Boolean,
+      default: false,
     },
   },
   {
@@ -87,7 +109,7 @@ userSchema.statics.checkUserExist = async function (userId: string) {
     throw new AppError(StatusCodes.NOT_ACCEPTABLE, "User does not exist!");
   }
 
-  if (!existingUser.isActive) {
+  if (!existingUser.isOnline) {
     throw new AppError(StatusCodes.NOT_ACCEPTABLE, "User is not active!");
   }
 
