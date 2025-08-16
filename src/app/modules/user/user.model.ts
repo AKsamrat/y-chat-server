@@ -1,7 +1,6 @@
 import bcrypt from "bcrypt";
 import { StatusCodes } from "http-status-codes";
 import mongoose, { Schema } from "mongoose";
-import config from "../../config";
 import AppError from "../../errors/appError";
 import { IUser, UserModel } from "./user.interface";
 
@@ -23,18 +22,15 @@ const userSchema = new Schema<IUser, UserModel>(
     },
     emailOtpExpire: {
       type: Date,
-      // required: true,
-      // unique: true,
-      // lowercase: true,
     },
     profilePicture: {
       type: String,
     },
-    password: {
-      type: String,
-      required: true,
-    },
-    phone: {
+    // password: {
+    //   type: String,
+    //   required: true,
+    // },
+    phoneNumber: {
       type: String,
       required: true,
       sparse: true,
@@ -68,21 +64,21 @@ const userSchema = new Schema<IUser, UserModel>(
   }
 );
 
-userSchema.pre("save", async function (next) {
-  const user = this;
+// userSchema.pre("save", async function (next) {
+//   const user = this;
 
-  user.password = await bcrypt.hash(
-    user.password,
-    Number(config.bcrypt_salt_rounds)
-  );
+//   user.password = await bcrypt.hash(
+//     user.password,
+//     Number(config.bcrypt_salt_rounds)
+//   );
 
-  next();
-});
+//   next();
+// });
 
-userSchema.post("save", function (doc, next) {
-  doc.password = "";
-  next();
-});
+// userSchema.post("save", function (doc, next) {
+//   doc.password = "";
+//   next();
+// });
 
 userSchema.set("toJSON", {
   transform: (_doc, ret: any) => {

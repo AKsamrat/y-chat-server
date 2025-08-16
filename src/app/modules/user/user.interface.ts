@@ -1,18 +1,12 @@
 import { Document, Model } from "mongoose";
 
-// Enum for User Roles
-export enum UserRole {
-  ADMIN = "tutor",
-  USER = "student",
-}
-
 // User Schema Definition
 export interface IUser extends Document {
   email: string;
   emailOtp: string;
   emailOtpExpire: Date;
-  password: string;
-  phone: string;
+  // password: string;
+  phoneNumber: string;
   phoneSuffix: string;
   username: string;
   profilePicture: string;
