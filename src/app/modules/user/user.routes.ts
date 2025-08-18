@@ -1,16 +1,15 @@
 import { Router } from "express";
-import auth from "../../middleware/auth";
 import clientInfoParser from "../../middleware/clientInfoParser";
 import { UserController } from "./user.controller";
-import { UserRole } from "./user.interface";
+// import { UserRole } from "./user.interface";
 
 const router = Router();
 
-router.get("/", auth(UserRole.ADMIN, UserRole.USER), UserController.getAllUser);
+router.get("/", UserController.getAllUser);
 
 router.get(
   "/me",
-  auth(UserRole.ADMIN, UserRole.USER),
+
   UserController.myProfile
 );
 
@@ -32,7 +31,7 @@ router.post(
 
 router.patch(
   "/:id/status",
-  auth(UserRole.ADMIN),
+
   UserController.updateUserStatus
 );
 

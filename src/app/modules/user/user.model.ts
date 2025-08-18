@@ -13,15 +13,16 @@ const userSchema = new Schema<IUser, UserModel>(
     },
     email: {
       type: String,
-      required: true,
       unique: true,
-      lowercase: true,
+      sparse: true,
     },
     emailOtp: {
       type: String,
+      required: false,
     },
     emailOtpExpire: {
       type: Date,
+      required: false,
     },
     profilePicture: {
       type: String,
@@ -32,7 +33,6 @@ const userSchema = new Schema<IUser, UserModel>(
     // },
     phoneNumber: {
       type: String,
-      required: true,
       sparse: true,
     },
     phoneSuffix: {

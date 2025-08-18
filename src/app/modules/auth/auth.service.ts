@@ -1,247 +1,188 @@
-import { ClientSession } from 'mongoose';
-import { StatusCodes } from 'http-status-codes';
-import AppError from '../../errors/appError';
-import User from '../user/user.model';
-import { IAuth, IJwtPayload } from './auth.interface';
-import { createToken, verifyToken } from './auth.utils';
-import config from '../../config';
-import mongoose from 'mongoose';
-import { JwtPayload, Secret } from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import { generateOtp } from '../../utils/generateOtp';
-import { EmailHelper } from '../../utils/emailHelper';
-
-const loginUser = async (payload: IAuth) => {
-   const session = await mongoose.startSession();
-
-   try {
-      session.startTransaction();
-
-      const user = await User.findOne({ email: payload.email }).session(
-         session
-      );
-      if (!user) {
-         throw new AppError(StatusCodes.NOT_FOUND, 'This user is not found!');
-      }
-
-      if (!user.isActive) {
-         throw new AppError(StatusCodes.FORBIDDEN, 'This user is not active!');
-      }
-
-      if (!(await User.isPasswordMatched(payload?.password, user?.password))) {
-         throw new AppError(StatusCodes.FORBIDDEN, 'Password does not match');
-      }
-
-      const jwtPayload = {
-         userId: user._id as string,
-         name: user.name as string,
-         email: user.email as string,
-         // hasShop: user.hasShop,
-         isActive: user.isActive,
-         role: user.role,
-      };
-
-
-      const accessToken = createToken(
-         jwtPayload,
-         config.jwt_access_secret as string,
-         config.jwt_access_expires_in as string
-      );
-
-      // const refreshToken = createToken(
-      //    jwtPayload,
-      //    config.jwt_refresh_secret as string,
-      //    config.jwt_refresh_expires_in as string
-      // );
-
-      const updateUserInfo = await User.findByIdAndUpdate(
-         user._id,
-         { lastLogin: Date.now() },
-         { new: true, session }
-      );
-
-      await session.commitTransaction();
-
-      return {
-         accessToken,
-         // refreshToken,
-      };
-   } catch (error) {
-      await session.abortTransaction();
-      throw error;
-   } finally {
-      session.endSession();
-   }
-};
-
-// const refreshToken = async (token: string) => {
-
-//    let verifiedToken = null;
-//    try {
-//       verifiedToken = verifyToken(
-//          token,
-//          config.jwt_refresh_secret as Secret
-//       );
-//    } catch (err) {
-//       throw new AppError(StatusCodes.FORBIDDEN, 'Invalid Refresh Token');
-//    }
-
-//    const { userId } = verifiedToken;
-
-//    const isUserExist = await User.findById(userId);
-//    if (!isUserExist) {
-//       throw new AppError(StatusCodes.NOT_FOUND, 'User does not exist');
-//    }
-
-//    if (!isUserExist.isActive) {
-//       throw new AppError(StatusCodes.BAD_REQUEST, 'User is not active');
-//    }
-
-
-//    const jwtPayload: IJwtPayload = {
-//       userId: isUserExist._id as string,
-//       name: isUserExist.name as string,
-//       email: isUserExist.email as string,
-//       // hasShop: isUserExist.hasShop,
-//       isActive: isUserExist.isActive,
-//       role: isUserExist.role,
-//    };
-
-//    const newAccessToken = createToken(
-//       jwtPayload,
-//       config.jwt_access_secret as Secret,
-//       config.jwt_access_expires_in as string
-//    );
-
-//    return {
-//       accessToken: newAccessToken,
-//    };
-// };
-
-const changePassword = async (
-   userData: JwtPayload,
-   payload: { oldPassword: string; newPassword: string }
+import { UploadApiResponse } from "cloudinary";
+import { Request, Response } from "express";
+import config from "../../config";
+import { uploadFileToCloudinary } from "../../config/multer.config";
+import { sendOtpToEmail } from "../../utils/emailService";
+import { otpGenerator } from "../../utils/otpGenerate";
+import {
+  sendOtpToPhoneNumber,
+  twilioVerifyOtp,
+} from "../../utils/twilloService";
+import User from "../user/user.model";
+import { createToken } from "./auth.utils";
+const sendOtp = async (
+  email?: string,
+  phoneNumber?: string,
+  phoneSuffix?: string
 ) => {
-   const { userId } = userData;
-   const { oldPassword, newPassword } = payload;
+  const otp = otpGenerator();
+  const expiry = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+  let user = null;
 
-   const user = await User.findOne({ _id: userId });
-   if (!user) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
-   }
-   if (!user.isActive) {
-      throw new AppError(StatusCodes.FORBIDDEN, 'User account is inactive');
-   }
+  if (email) {
+    user = await User.findOne({ email });
+    if (!user) {
+      user = new User({ email });
+    }
+    user.emailOtp = otp;
+    user.emailOtpExpire = expiry;
+    await user.save();
 
-   // Validate old password
-   const isOldPasswordCorrect = await User.isPasswordMatched(
-      oldPassword,
-      user.password
-   );
-   if (!isOldPasswordCorrect) {
-      throw new AppError(StatusCodes.FORBIDDEN, 'Incorrect old password');
-   }
+    await sendOtpToEmail(email, otp);
 
-   // Hash and update the new password
-   const hashedPassword = await bcrypt.hash(
-      newPassword,
-      Number(config.bcrypt_salt_rounds)
-   );
-   await User.updateOne({ _id: userId }, { password: hashedPassword });
+    return { type: "email", email };
+  }
 
-   return { message: 'Password changed successfully' };
+  if (phoneNumber && phoneSuffix) {
+    const fullPhoneNumber = `${phoneSuffix}${phoneNumber}`;
+    user = await User.findOne({ phoneNumber });
+    if (!user) {
+      user = new User({ phoneNumber, phoneSuffix });
+    }
+    user.emailOtp = otp;
+    user.emailOtpExpire = expiry;
+    await user.save();
+
+    await sendOtpToPhoneNumber(fullPhoneNumber);
+
+    return { type: "phone", phoneNumber: fullPhoneNumber };
+  }
+
+  throw new Error("Email or phone number is required");
 };
 
-const forgotPassword = async ({ email }: { email: string }) => {
-   const user = await User.findOne({ email: email });
+interface VerifyOtpBody {
+  phoneNumber?: string;
+  phoneSuffix?: string;
+  email?: string;
+  otp: string;
+}
 
-   if (!user) {
-      throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
-   }
+const verifyOtp = async (body: VerifyOtpBody) => {
+  const { phoneNumber, phoneSuffix, email, otp } = body;
+  let user = null;
 
-   if (!user.isActive) {
-      throw new AppError(StatusCodes.BAD_REQUEST, 'User is not active!');
-   }
+  if (email) {
+    user = await User.findOne({ email });
+    if (!user) {
+      throw new Error("USER_NOT_FOUND");
+    }
 
-   const otp = generateOtp();
+    const now = new Date();
+    if (
+      !user.emailOtp ||
+      String(user.emailOtp) !== String(otp) ||
+      now > new Date(user.emailOtpExpire as Date)
+    ) {
+      throw new Error("INVALID_OTP");
+    }
 
-   const otpToken = jwt.sign({ otp, email }, config.jwt_otp_secret as string, {
-      expiresIn: '5m',
-   });
+    user.isVerified = true;
+    user.emailOtp = null;
+    user.emailOtpExpire = null;
+    await user.save();
+    const jwtPayload = {
+      userId: user._id as string,
+      name: user.username as string,
+      email: user.email as string,
+      isOnline: user.isOnline,
+    };
 
-   await User.updateOne({ email }, { otpToken });
+    const token = createToken(
+      jwtPayload,
+      config.jwt_access_secret as string,
+      config.jwt_access_expires_in as string
+    );
 
-   try {
-      const emailContent = await EmailHelper.createEmailContent(
-         { otpCode: otp, userName: user.name },
-         'forgotPassword'
-      );
+    console.log(token);
 
-      await EmailHelper.sendEmail(email, emailContent, "Reset Password OTP");
-   } catch (error) {
-      await User.updateOne({ email }, { $unset: { otpToken: 1 } });
+    return { type: "email", user };
+  }
 
-      throw new AppError(
-         StatusCodes.INTERNAL_SERVER_ERROR,
-         'Failed to send OTP email. Please try again later.'
-      );
-   }
+  if (!phoneNumber || !phoneSuffix) {
+    throw new Error("PHONE_REQUIRED");
+  }
+
+  const fullPhoneNumber = `${phoneSuffix}${phoneNumber}`;
+  user = await User.findOne({ phoneNumber });
+
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
+
+  const result = await twilioVerifyOtp(fullPhoneNumber, otp);
+  if (result.status !== "approved") {
+    throw new Error("INVALID_OTP");
+  }
+
+  const jwtPayload = {
+    userId: user._id as string,
+    name: user.username as string,
+    email: user.email as string,
+    isOnline: user.isOnline,
+  };
+
+  const token = createToken(
+    jwtPayload,
+    config.jwt_access_secret as string,
+    config.jwt_access_expires_in as string
+  );
+
+  console.log(token);
+
+  return { type: "phone", user, token };
 };
 
+const updateProfile = async (req: Request) => {
+  const { username, agreed, about } = req.body;
+  const userId = req.user.userId; // assuming req.user is set by auth middleware
 
+  const user = await User.findById(userId);
+  if (!user) throw new Error("User not found");
 
-const resetPassword = async ({
-   token,
-   newPassword,
-}: {
-   token: string;
-   newPassword: string;
-}) => {
+  // Handle file upload
+  if (req.file) {
+    const uploadResult = (await uploadFileToCloudinary(
+      req.file
+    )) as UploadApiResponse;
+    user.profilePicture = uploadResult.secure_url;
+  }
 
-   const session: ClientSession = await User.startSession();
+  // Update fields
+  if (username) user.username = username;
+  if (agreed !== undefined) user.agreed = agreed;
+  if (about) user.about = about;
 
-   try {
-      session.startTransaction();
+  await user.save();
 
-      const decodedData = verifyToken(
-         token as string,
-         config.jwt_pass_reset_secret as string
-      );
+  return user;
+};
 
-      const user = await User.findOne({ email: decodedData.email, isActive: true }).session(session);
+const checkAuthenticated = async (userId: string) => {
+  if (!userId) {
+    throw new Error("UNAUTHORIZED");
+  }
 
-      if (!user) {
-         throw new AppError(StatusCodes.NOT_FOUND, 'User not found');
-      }
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error("USER_NOT_FOUND");
+  }
 
-      const hashedPassword = await bcrypt.hash(
-         String(newPassword),
-         Number(config.bcrypt_salt_rounds)
-      );
+  return user;
+};
 
-      await User.updateOne({ email: user.email }, { password: hashedPassword }).session(
-         session
-      );
-
-      await session.commitTransaction();
-
-      return {
-         message: 'Password changed successfully',
-      };
-   } catch (error) {
-      await session.abortTransaction();
-      throw error;
-   } finally {
-      session.endSession();
-   }
+const logout = (res: Response) => {
+  // clear the cookie by setting it to empty + expired date
+  res.cookie("Auth_token", "", { expires: new Date(0), httpOnly: true });
+  return true;
 };
 
 export const AuthService = {
-   loginUser,
-   // refreshToken,
-   changePassword,
-   forgotPassword,
+  sendOtp,
+  verifyOtp,
+  updateProfile,
+  logout,
+  checkAuthenticated,
 
-   resetPassword,
+  // refreshToken,
 };

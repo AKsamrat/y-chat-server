@@ -5,7 +5,7 @@
     "lib": ["ES2020"] /* Include modern JS features */,
     "module": "CommonJS" /* Use CommonJS for Node.js */,
     "moduleResolution": "Node" /* Resolve modules like Node.js */,
-    "types": ["node"] /* Include Node.js type definitions */,
+    "types": ["node", "express"] /* Include Node.js type definitions */,
 
     /* Import/Export Handling */
     "esModuleInterop": true /* Allow default imports from CommonJS */,
@@ -24,6 +24,6 @@
     "resolveJsonModule": true /* Allow importing JSON files */,
     "verbatimModuleSyntax": false /* Avoid ESM/CJS conflict issues */
   },
-  "include": ["src"] /* Compile all files in src folder */,
+  "include": ["src", "types"] /* Compile all files in src folder */,
   "exclude": ["node_modules"] /* Ignore node_modules */
 }

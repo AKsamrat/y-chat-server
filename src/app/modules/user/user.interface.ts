@@ -2,9 +2,9 @@ import { Document, Model } from "mongoose";
 
 // User Schema Definition
 export interface IUser extends Document {
-  email: string;
-  emailOtp: string;
-  emailOtpExpire: Date;
+  email?: string;
+  emailOtp?: string | null;
+  emailOtpExpire?: Date | null;
   // password: string;
   phoneNumber: string;
   phoneSuffix: string;

@@ -1,23 +1,31 @@
-import multer from 'multer';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
-import { cloudinaryUpload } from './cloudinary.config';
+import { UploadApiOptions } from "cloudinary";
+import fs from "fs";
+import multer from "multer";
+import cloudinary from "./cloudinary.config";
 
+export const uploadFileToCloudinary = (file: Express.Multer.File) => {
+  const options: UploadApiOptions = {
+    resource_type: file.mimetype.startsWith("video") ? "video" : "image",
+    folder: "uploads",
+  };
 
-const removeExtension = (filename: string) => {
-    return filename.split('.').slice(0, -1).join('.');
+  return new Promise((resolve, reject) => {
+    const uploader =
+      file.mimetype.startsWith("video") && file.size > 100 * 1024 * 1024 // >100MB
+        ? cloudinary.uploader.upload_large
+        : cloudinary.uploader.upload;
+
+    uploader(file.path, options, (error: any, result: any) => {
+      // remove local temp file
+      fs.unlink(file.path, () => {});
+
+      if (error) {
+        return reject(error);
+      }
+      resolve(result);
+    });
+  });
 };
 
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinaryUpload,
-    params: {
-        public_id: (_req, file) =>
-            Math.random().toString(36).substring(2) +
-            '-' +
-            Date.now() +
-            '-' +
-            file.fieldname +
-            '-' +
-            removeExtension(file.originalname),
-    },
-});
-export const multerUpload = multer({ storage: storage });
+// Multer middleware
+export const multerMiddleWare = multer({ dest: "uploads/" }).single("media");

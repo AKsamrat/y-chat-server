@@ -36,7 +36,7 @@ export const sendOtpToPhoneNumber = async (phoneNumber: string) => {
     throw new Error("Failed to send OTP");
   }
 };
-const verifyOtp = async (phoneNumber: string, otp: string) => {
+export const twilioVerifyOtp = async (phoneNumber: string, otp: string) => {
   try {
     console.log("this is my otp", otp, phoneNumber);
     const response = await client.verify.v2
@@ -45,10 +45,10 @@ const verifyOtp = async (phoneNumber: string, otp: string) => {
         to: phoneNumber,
         code: otp,
       });
-    console.log("this is my otp response");
+    console.log("this is my otp response", response);
     return response;
   } catch (error) {
     console.error(error);
-    throw new Error("Failed to send otp");
+    throw new Error("Failed otp Verification");
   }
 };

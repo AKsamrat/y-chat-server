@@ -1,28 +1,18 @@
-import { Router } from 'express';
-import { AuthController } from './auth.controller';
-import clientInfoParser from '../../middleware/clientInfoParser';
-import auth from '../../middleware/auth';
-import { UserRole } from '../user/user.interface';
-
+import { Router } from "express";
+import { multerMiddleWare } from "../../config/multer.config";
+import { authMiddleware } from "../../middleware/authMiddleware";
+import { AuthController } from "./auth.controller";
 
 const router = Router();
 
-router.post('/login', clientInfoParser, AuthController.loginUser);
-
-// router.post(
-//    '/refresh-token',
-//    // validateRequest(AuthValidation.refreshTokenZodSchema),
-//    AuthController.refreshToken
-// );
-
-router.post(
-   '/change-password',
-   auth(UserRole.ADMIN, UserRole.USER),
-   AuthController.changePassword
+router.post("/send-otp", AuthController.sendOtp);
+router.post("/verify-otp", AuthController.verifyOtp);
+router.get("/logout", AuthController.logout);
+router.put(
+  "/updateProfile",
+  authMiddleware,
+  multerMiddleWare,
+  AuthController.updateProfile
 );
-
-router.post('/forgot-password', AuthController.forgotPassword);
-
-router.post('/reset-password', AuthController.resetPassword);
 
 export const AuthRoutes = router;
