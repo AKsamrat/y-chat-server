@@ -8,6 +8,7 @@ import {
   sendOtpToPhoneNumber,
   twilioVerifyOtp,
 } from "../../utils/twilloService";
+import { Conversation } from "../conversation/conv.model";
 import User from "../user/user.model";
 import { createToken } from "./auth.utils";
 const sendOtp = async (
@@ -96,7 +97,7 @@ const verifyOtp = async (body: VerifyOtpBody) => {
 
     console.log(token);
 
-    return { type: "email", user };
+    return { type: "email", user, token };
   }
 
   if (!phoneNumber || !phoneSuffix) {
@@ -176,6 +177,35 @@ const logout = (res: Response) => {
   res.cookie("Auth_token", "", { expires: new Date(0), httpOnly: true });
   return true;
 };
+const getAllUser = async (loggedInUser: string) => {
+  // get all users except logged in one
+  const users = await User.find({ _id: { $ne: loggedInUser } })
+    .select(
+      "username profilePicture lastSeen isOnline about phoneNumber phoneSuffix"
+    )
+    .lean();
+
+  // attach conversation with each user
+  const userWithConversation = await Promise.all(
+    users.map(async (user) => {
+      const conversation = await Conversation.findOne({
+        participants: { $all: [loggedInUser, user?._id] },
+      })
+        .populate({
+          path: "lastMessage",
+          select: "content createdAt sender receiver",
+        })
+        .lean();
+
+      return {
+        ...user,
+        conversation: conversation || null,
+      };
+    })
+  );
+
+  return userWithConversation;
+};
 
 export const AuthService = {
   sendOtp,
@@ -183,6 +213,7 @@ export const AuthService = {
   updateProfile,
   logout,
   checkAuthenticated,
+  getAllUser,
 
   // refreshToken,
 };

@@ -1,9 +1,11 @@
 import { UploadApiOptions } from "cloudinary";
 import fs from "fs";
 import multer from "multer";
-import cloudinary from "./cloudinary.config";
+import cloudinary, { CloudinaryUploadResult } from "./cloudinary.config";
 
-export const uploadFileToCloudinary = (file: Express.Multer.File) => {
+export const uploadFileToCloudinary = async (
+  file: Express.Multer.File
+): Promise<CloudinaryUploadResult> => {
   const options: UploadApiOptions = {
     resource_type: file.mimetype.startsWith("video") ? "video" : "image",
     folder: "uploads",

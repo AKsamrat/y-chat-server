@@ -99,7 +99,7 @@ const logout = async (req: Request, res: Response) => {
 const checkAuthenticated = async (req: Request, res: Response) => {
   try {
     const userId = req.user?.userId; // comes from your auth middleware
-
+    console.log(userId);
     const user = await AuthService.checkAuthenticated(userId as string);
 
     return response(res, 200, "User retrieved and allowed to use Y-Chat", user);
@@ -121,10 +121,28 @@ const checkAuthenticated = async (req: Request, res: Response) => {
   }
 };
 
+const getAllUser = async (req: Request, res: Response) => {
+  try {
+    const loggedInUser = req.user?.userId; // set from authMiddleware
+
+    if (!loggedInUser) {
+      return response(res, 401, "Unauthorized! Please login first");
+    }
+
+    const users = await AuthService.getAllUser(loggedInUser);
+
+    return response(res, 200, "Users retrieved successfully", users);
+  } catch (error: any) {
+    console.error("Error in getAllUser:", error);
+    return response(res, 500, error.message || "Internal Server Error");
+  }
+};
+
 export const AuthController = {
   sendOtp,
   verifyOtp,
   updateProfile,
   logout,
   checkAuthenticated,
+  getAllUser,
 };
