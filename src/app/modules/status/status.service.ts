@@ -1,4 +1,6 @@
+import { Response } from "express";
 import { uploadFileToCloudinary } from "../../config/multer.config";
+import { response } from "../../utils/responseHandler";
 import { Status } from "./status.model";
 
 const createStatus = async (
@@ -55,6 +57,67 @@ const createStatus = async (
   return populatedStatus;
 };
 
+const getStatus = async () => {
+  try {
+    const status = await Status.find({
+      expireAt: { $gt: new Date() }, // typo fixed: expireAt -> expireAt
+    })
+      .populate("user", "username profilePicture")
+      .populate("viewers", "username profilePicture")
+      .sort({ createdAt: -1 });
+
+    return status;
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to fetch statuses");
+  }
+};
+
+const viewStatus = async (statusId: string, userId: string, res: Response) => {
+  try {
+    const status = await Status.findById(statusId);
+    if (!status) {
+      return response(res, 404, "Status not found");
+    }
+
+    if (!status.viewers.includes(userId as any)) {
+      status.viewers.push(userId as any);
+      await status.save();
+    }
+
+    const updatedStatus = await Status.findById(statusId)
+      .populate("user", "username profilePicture")
+      .populate("viewers", "username profilePicture");
+
+    return updatedStatus;
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to update status view");
+  }
+};
+
+const deleteStatus = async (
+  statusId: string,
+  userId: string,
+  res: Response
+) => {
+  try {
+    const status = await Status.findById(statusId);
+    if (!status) {
+      return response(res, 404, "Status not found");
+    }
+    if (status.user.toString() !== userId) {
+      return response(res, 403, "You are not Authorize to delete");
+    }
+
+    await status.deleteOne(); // Correct way to delete the found document
+    return { success: true, code: 200, message: "Status deleted successfully" };
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to delete status");
+  }
+};
+
 export const StatusService = {
   createStatus,
+  getStatus,
+  viewStatus,
+  deleteStatus,
 };

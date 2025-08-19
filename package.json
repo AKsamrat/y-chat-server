@@ -29,9 +29,9 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.1",
     "multer": "^2.0.2",
-    "multer-storage-cloudinary": "^4.0.0",
     "nodemailer": "^7.0.5",
     "nodemon": "^3.1.10",
+    "socket.io": "^4.8.1",
     "twilio": "^5.8.0",
     "ua-parser-js": "^2.0.4",
     "zod": "^4.0.17"
