@@ -44,7 +44,7 @@ const messageSchema = new Schema<IMessage>(
     ],
     messageStatus: {
       type: String,
-      enum: ["sent", "delivered", "read"],
+      enum: ["send", "delivered", "read"],
       default: "sent",
     },
   },

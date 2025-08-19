@@ -71,5 +71,6 @@ const deleteMessage = async (req: Request, res: Response) => {
 export const MessageController = {
   sendMessage,
   getSpecificMessage,
+  markAsRead,
   deleteMessage,
 };

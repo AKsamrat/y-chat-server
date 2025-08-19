@@ -4,7 +4,7 @@ import { ConversationService } from "./conv.service";
 
 export const getConversation = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user.userId; // ✅ assuming user is injected via auth middleware
+    const userId = (req as any).user.userId; //  assuming user is injected via auth middleware
     const conversations = await ConversationService.getConversation(userId);
 
     return response(

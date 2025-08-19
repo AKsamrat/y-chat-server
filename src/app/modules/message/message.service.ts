@@ -2,7 +2,7 @@ import { uploadFileToCloudinary } from "../../config/multer.config";
 import { Conversation } from "../conversation/conv.model";
 import { Message } from "./message.model";
 
-export const sendMessage = async (
+const sendMessage = async (
   senderId: string,
   receiverId: string,
   content: string,
