@@ -31,7 +31,7 @@ const messageSchema = new Schema<IMessage>(
       enum: ["image", "video", "text"],
       default: "text",
     },
-    reaction: [
+    reactions: [
       {
         user: {
           type: Schema.Types.ObjectId,

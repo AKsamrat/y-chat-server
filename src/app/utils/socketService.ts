@@ -1,4 +1,3 @@
-import { Types } from "mongoose";
 import { Server } from "socket.io";
 import { Message } from "../modules/message/message.model";
 import User from "../modules/user/user.model";
@@ -9,7 +8,7 @@ const onlineUsers = new Map();
 //Map to track typing status-> userId ->[conversation]:boolean
 const typingUsers = new Map();
 
-const initializeSocket = (server) => {
+const initializeSocket = (server: any) => {
   const io = new Server(server, {
     cors: {
       origin: process.env.FRONTEND_URL,
@@ -23,7 +22,7 @@ const initializeSocket = (server) => {
   io.on("connection", (socket) => {
     console.log(`user connected:${socket.id}`);
 
-    let userId: string | Types.ObjectId | null = null;
+    let userId: any = null;
 
     //handle user connection and mark them online in DB
 
@@ -31,9 +30,7 @@ const initializeSocket = (server) => {
       try {
         userId = connectingUserId;
         onlineUsers.set(userId, socket.id);
-        if (!userId) {
-          throw new Error("User not found");
-        }
+
         socket.join(userId); //join a personal room for direct emit
 
         //update user status in db
@@ -97,6 +94,69 @@ const initializeSocket = (server) => {
     //handle typing start event and auto stop
     socket.on("writing_start", ({ conversationId, receiverId }) => {
       if (!userId || !receiverId || !conversationId) return;
+
+      if (typingUsers.has(userId)) typingUsers.set(userId, {});
+
+      const userTyping = typingUsers.get(userId);
+      userTyping[conversationId] = true;
+      //clean any existing timeout
+      if (userTyping[`${conversationId}_timeout`]) {
+        clearTimeout(userTyping[`${conversationId}_timeout`]);
+      }
+
+      //auto-stop after 3s
+      userTyping[`${conversationId}_timeout`] = setTimeout(() => {
+        userTyping[conversationId] = false;
+        socket.to(receiverId).emit("user_typing", {
+          userId,
+          conversationId,
+          isTyping: false,
+        });
+      }, 3000);
+
+      //notify receiver
+      socket.to(receiverId).emit("user_typing", {
+        userId,
+        conversationId,
+        isTyping: false,
+      });
     });
+
+    socket.on("typing_stop", ({ conversationId, receiverId }) => {
+      if (!userId || !receiverId || !conversationId) return;
+
+      if (typingUsers.has(userId)) {
+        const userTyping = typingUsers.get(userId);
+        userTyping[conversationId] = false;
+
+        if (userTyping[`${conversationId}_timeout`]) {
+          clearTimeout(userTyping[`${conversationId}_timeout`]);
+          delete userTyping[`${conversationId}_timeout`];
+        }
+      }
+      socket.to(receiverId).emit("user_typing", {
+        userId,
+        conversationId,
+        isTyping: false,
+      });
+    });
+    //add or update reacftion on massage
+    socket.on(
+      "add_reaction",
+      async (MessageId, emoji, userId, reactionUserId) => {
+        try {
+          const message = await Message.findById(MessageId);
+          if (!message) return;
+          const existingIndex = message.reactions.findIndex(
+            (r) => r.user.toString() === reactionUserId
+          );
+          if (existingIndex > -1) {
+            const existing = message.reactions[existingIndex];
+            //remove same reaction
+            message.reactions.splice(existingIndex, 1);
+          }
+        } catch (error) {}
+      }
+    );
   });
 };

@@ -7,7 +7,7 @@ export interface IMessage extends Document {
   content: string;
   imageOrVideoUrl: string;
   contentType: "image" | "video" | "text";
-  reaction: [
+  reactions: [
     {
       user: Types.ObjectId;
       emoji: string;
