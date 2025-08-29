@@ -152,8 +152,16 @@ const initializeSocket = (server: any) => {
           );
           if (existingIndex > -1) {
             const existing = message.reactions[existingIndex];
-            //remove same reaction
-            message.reactions.splice(existingIndex, 1);
+            if (existing.emoji === emoji) {
+              //remove same reaction
+              message.reactions.splice(existingIndex, 1);
+            } else {
+              //change imoji
+              message.reactions[existingIndex].emoji = emoji;
+            }
+          } else {
+            //add new reaction
+            message.reactions.push({ user: reactionUserId, emoji });
           }
         } catch (error) {}
       }
