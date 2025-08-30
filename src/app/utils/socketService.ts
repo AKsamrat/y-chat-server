@@ -143,9 +143,9 @@ const initializeSocket = (server: any) => {
     //add or update reacftion on massage
     socket.on(
       "add_reaction",
-      async (MessageId, emoji, userId, reactionUserId) => {
+      async (messageId, emoji, userId, reactionUserId) => {
         try {
-          const message = await Message.findById(MessageId);
+          const message = await Message.findById(messageId);
           if (!message) return;
           const existingIndex = message.reactions.findIndex(
             (r) => r.user.toString() === reactionUserId
@@ -163,6 +163,24 @@ const initializeSocket = (server: any) => {
             //add new reaction
             message.reactions.push({ user: reactionUserId, emoji });
           }
+          await message.save();
+          const populateMessage = await Message.findById(message._id)
+            .populate("sender", "username profilePicture")
+            .populate("receiver", "username profilePicture")
+            .populate("reactions.user", "user");
+
+          const reactionUpdated = {
+            messageId,
+            reactions: populateMessage,
+          };
+          const senderSocket = onlineUsers.get(
+            populateMessage?.sender._id.toString()
+          );
+          const receiverSocket = onlineUsers.get(
+            populateMessage?.receiver?._id.toString()
+          );
+          if (senderSocket)
+            io.to(senderSocket).emit("reactionUpdate", reactionUpdated);
         } catch (error) {}
       }
     );
