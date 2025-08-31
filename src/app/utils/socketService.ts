@@ -181,7 +181,11 @@ const initializeSocket = (server: any) => {
           );
           if (senderSocket)
             io.to(senderSocket).emit("reactionUpdate", reactionUpdated);
-        } catch (error) {}
+          if (receiverSocket)
+            io.to(receiverSocket).emit("reactionUpdate", reactionUpdated);
+        } catch (error) {
+          console.log("Error handling reaction", error);
+        }
       }
     );
   });
