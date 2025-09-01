@@ -1,6 +1,6 @@
 import { Server } from "http";
 import mongoose from "mongoose";
-import app from "./app";
+import serverS from "./app";
 import config from "./app/config";
 
 let server: Server | null = null;
@@ -35,7 +35,7 @@ async function bootstrap() {
     await connectToDatabase();
     //await seed();
 
-    server = app.listen(config.port, () => {
+    server = serverS.listen(config.port, () => {
       console.log(`🚀 Application is running on port ${config.port}`);
     });
 

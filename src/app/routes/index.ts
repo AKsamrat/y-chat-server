@@ -25,7 +25,7 @@ const moduleRoutes = [
     route: ConversationRoutes,
   },
   {
-    path: "/staus",
+    path: "/status",
     route: StatusRoutes,
   },
   // {

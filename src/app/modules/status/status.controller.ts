@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { response } from "../../utils/responseHandler";
+import { Status } from "./status.model";
 import { StatusService } from "./status.service";
 
 const createStatus = async (req: Request, res: Response) => {
@@ -14,6 +15,16 @@ const createStatus = async (req: Request, res: Response) => {
       contentType,
       file
     );
+
+    //emit socket event
+    if (req.io && req.socketUserMap) {
+      //Broadcast to all connecting user except the creator
+      for (const [connectingUserId, socketId] of req.socketUserMap) {
+        if (connectingUserId !== userId) {
+          req.io.to(socketId).emit("new_status", status);
+        }
+      }
+    }
 
     return response(res, 200, "Message sent successfully", status);
   } catch (error: any) {
@@ -37,10 +48,35 @@ const viewStatus = async (req: Request, res: Response) => {
   const userId = (req as any).user.userId;
 
   try {
+    const status = await Status.findById(statusId);
+    if (!status) {
+      return response(res, 404, "Status not found");
+    }
+
+    if (!status.viewers.includes(userId as any)) {
+      status.viewers.push(userId as any);
+      await status.save();
+    }
     const updatedStatus = await StatusService.viewStatus(statusId, userId, res);
 
     if (!updatedStatus) {
       return response(res, 404, "Status not found");
+    }
+
+    //emit socket event
+    if (req.io && req.socketUserMap) {
+      //Broadcast to all connecting user except the creator
+      const statusOwnerSocketId = req.socketUserMap.get(
+        status.user._id.toString()
+      );
+      if (statusOwnerSocketId) {
+        const viewData = {
+          statusId,
+          viewerId: userId,
+          totalViewers: updatedStatus.viewers.length,
+          viewers: updatedStatus.viewers,
+        };
+      }
     }
 
     return response(res, 200, "Status viewed successfully", updatedStatus);

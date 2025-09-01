@@ -88,14 +88,16 @@ const initializeSocket = (server: any) => {
             });
           });
         }
-      } catch (error) {}
+      } catch (error) {
+        console.error("Error Updating Message read status", error);
+      }
     });
 
     //handle typing start event and auto stop
     socket.on("writing_start", ({ conversationId, receiverId }) => {
       if (!userId || !receiverId || !conversationId) return;
 
-      if (typingUsers.has(userId)) typingUsers.set(userId, {});
+      if (!typingUsers.has(userId)) typingUsers.set(userId, {});
 
       const userTyping = typingUsers.get(userId);
       userTyping[conversationId] = true;
@@ -118,7 +120,7 @@ const initializeSocket = (server: any) => {
       socket.to(receiverId).emit("user_typing", {
         userId,
         conversationId,
-        isTyping: false,
+        isTyping: true,
       });
     });
 
@@ -188,5 +190,43 @@ const initializeSocket = (server: any) => {
         }
       }
     );
+    //handle disconnect and mark user ofline
+
+    const handleDisconnected = async () => {
+      if (!userId) return;
+      try {
+        onlineUsers.delete(userId);
+
+        //clear all typing timeOut
+        if (typingUsers.has(userId)) {
+          const userTyping = typingUsers.get(userId);
+          Object.keys(userTyping).forEach((key) => {
+            if (key.endsWith("_timeout")) clearTimeout(userTyping[key]);
+          });
+          typingUsers.delete(userId);
+        }
+        await User.findByIdAndUpdate(userId, {
+          isOnline: false,
+          lastSeen: new Date(),
+        });
+        io.emit("user_status", {
+          userId,
+          isOnline: false,
+          lastSeen: new Date(),
+        });
+        socket.leave(userId);
+        console.log(`user${userId}disconnected`);
+      } catch (error) {
+        console.error("Error handling disconnected", error);
+      }
+    };
+
+    //disconnect event
+    socket.on("disconnent", handleDisconnected);
   });
+  //attach the online user map to the socket server for external user
+  io.socketUserMap = onlineUsers;
+  return io;
 };
+
+export default initializeSocket;

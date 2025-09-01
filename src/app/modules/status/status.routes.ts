@@ -12,8 +12,9 @@ router.post(
   StatusController.createStatus
 );
 router.get("/get-status", StatusController.getStatus);
-router.get(
-  "/status/:statusId/view",
+router.delete("/:get-statusId", StatusController.deleteStatus);
+router.put(
+  "/status-view/:statusId",
   authMiddleware,
   StatusController.viewStatus
 );

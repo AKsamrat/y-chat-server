@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { uploadFileToCloudinary } from "../../config/multer.config";
 import { response } from "../../utils/responseHandler";
+import { IStatus } from "./status.interface";
 import { Status } from "./status.model";
 
 const createStatus = async (
@@ -72,18 +73,12 @@ const getStatus = async () => {
   }
 };
 
-const viewStatus = async (statusId: string, userId: string, res: Response) => {
+const viewStatus = async (
+  statusId: string,
+  userId: string,
+  res: Response
+): Promise<IStatus | null> => {
   try {
-    const status = await Status.findById(statusId);
-    if (!status) {
-      return response(res, 404, "Status not found");
-    }
-
-    if (!status.viewers.includes(userId as any)) {
-      status.viewers.push(userId as any);
-      await status.save();
-    }
-
     const updatedStatus = await Status.findById(statusId)
       .populate("user", "username profilePicture")
       .populate("viewers", "username profilePicture");

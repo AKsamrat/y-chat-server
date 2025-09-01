@@ -1,13 +1,13 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express, { Application, NextFunction, Request, Response } from "express";
+import http from "http";
 import { StatusCodes } from "http-status-codes";
 import * as os from "os";
+import initializeSocket from "../src/app/utils/socketService";
 import globalErrorHandler from "./app/middleware/globalErrorHandler";
 import notFound from "./app/middleware/notFound";
 import router from "./app/routes";
-// import seedAdmin from './app/DB/seed';
-// import { sslService } from './app/modules/sslcommerz/sslcommerz.service';
 
 const app: Application = express();
 
@@ -16,6 +16,17 @@ app.use(cors({ origin: "http://localhost:5173" }));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+//create server
+const serverS = http.createServer(app);
+const io = initializeSocket(serverS);
+
+//apply socket middleware before routes
+app.use((req, res, next) => {
+  req.io = io;
+  req.socketUserMap = io.socketUserMap;
+  next();
+});
 
 app.use("/api/v1", router);
 
@@ -52,4 +63,4 @@ app.use(globalErrorHandler);
 //Not Found
 app.use(notFound);
 
-export default app; // Export the app for use in server.ts
+export default serverS; // Export the app for use in server.ts
