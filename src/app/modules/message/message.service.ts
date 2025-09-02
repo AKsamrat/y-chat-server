@@ -1,8 +1,10 @@
+import { Request } from "express";
 import { uploadFileToCloudinary } from "../../config/multer.config";
 import { Conversation } from "../conversation/conv.model";
 import { Message } from "./message.model";
 
 const sendMessage = async (
+  req: Request,
   senderId: string,
   receiverId: string,
   content: string,
@@ -66,6 +68,15 @@ const sendMessage = async (
   const populatedMessage = await Message.findById(message._id)
     .populate("sender", "username profilePicture")
     .populate("receiver", "username profilePicture");
+  //emit socket event for real time
+  if (req.io && req.socketUserMap) {
+    const receiverSocketId = req.socketUserMap.get(receiverId);
+    if (receiverSocketId) {
+      req.io.to(receiverSocketId).emit("receive_message", populatedMessage);
+      message.messageStatus = "delivered";
+      await message.save();
+    }
+  }
 
   return populatedMessage;
 };
@@ -116,7 +127,11 @@ const getSpecificMessage = async (conversationId: string, userId: string) => {
   };
 };
 
-const markAsRead = async (messageIds: string[], userId: string) => {
+const markAsRead = async (
+  req: Request,
+  messageIds: string[],
+  userId: string
+) => {
   // Find relevant messages
   const messages = await Message.find({
     _id: { $in: messageIds },
@@ -128,11 +143,29 @@ const markAsRead = async (messageIds: string[], userId: string) => {
     { _id: { $in: messageIds }, receiver: userId },
     { $set: { messageStatus: "read" } }
   );
+  //notify to original sender
+  if (req.io && req.socketUserMap) {
+    for (const message of messages) {
+      const senderSocketId = req.socketUserMap.get(message.sender.toString());
+      if (senderSocketId) {
+        const updateMessage = {
+          _id: message._id,
+          messageStatus: "read",
+        };
+        req.io.to(senderSocketId).emit("message_read", updateMessage);
+        await message.save();
+      }
+    }
+  }
 
   return { status: 200, message: "Messages marked as read", data: messages };
 };
 
-const deleteMessage = async (messageId: string, userId: string) => {
+const deleteMessage = async (
+  req: Request,
+  messageId: string,
+  userId: string
+) => {
   //  Find the message
   const message = await Message.findById(messageId);
   if (!message) {
@@ -149,6 +182,14 @@ const deleteMessage = async (messageId: string, userId: string) => {
 
   //  Delete the message
   await Message.deleteOne({ _id: messageId });
+
+  //emit socket event
+  if (req.io && req.socketUserMap) {
+    const receiverSocketId = req.socketUserMap.get(message.receiver.toString());
+    if (receiverSocketId) {
+      req.io.to(receiverSocketId).emit("message_delete", messageId);
+    }
+  }
 
   return { status: 200, message: "Message deleted successfully" };
 };

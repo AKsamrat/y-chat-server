@@ -25,6 +25,10 @@ const io = initializeSocket(serverS);
 app.use((req, res, next) => {
   req.io = io;
   req.socketUserMap = io.socketUserMap;
+
+  res.io = io;
+  res.socketUserMap = io.socketUserMap;
+
   next();
 });
 

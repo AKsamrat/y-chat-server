@@ -76,6 +76,9 @@ const viewStatus = async (req: Request, res: Response) => {
           totalViewers: updatedStatus.viewers.length,
           viewers: updatedStatus.viewers,
         };
+        res.io.to(statusOwnerSocketId).emit("status_viewed", viewData);
+      } else {
+        console.log("user already viewed the status");
       }
     }
 
@@ -97,6 +100,14 @@ const deleteStatus = async (req: Request, res: Response) => {
       return response(res, 404, "Status not found");
     }
 
+    //emit socket event
+    if (req.io && req.socketUserMap) {
+      for (const [connectingUserId, socketId] of req.socketUserMap) {
+        if (connectingUserId !== userId) {
+          req.io.to(socketId).emit("status_deleted", statusId);
+        }
+      }
+    }
     return response(res, 200, "Status Delete Successfully");
   } catch (error: any) {
     console.error("Error in deleteStatusController:", error);

@@ -8,7 +8,8 @@ const sendMessage = async (req: Request, res: Response) => {
     const { senderId, receiverId, content, messageStatus } = req.body;
     const file = req.file;
 
-    const message = await MessageService.sendMessage(
+    const populateMessage = await MessageService.sendMessage(
+      req,
       senderId,
       receiverId,
       content,
@@ -16,10 +17,10 @@ const sendMessage = async (req: Request, res: Response) => {
       file
     );
 
-    return response(res, 200, "Message sent successfully", message);
+    return response(res, 200, "Message sent successfully", populateMessage);
   } catch (error: any) {
     console.error("Error in sendMessage:", error);
-    return response(res, 500, error.message || "Internal Server Error");
+    return response(res, 500, error.populateMessage || "Internal Server Error");
   }
 };
 
@@ -45,7 +46,7 @@ const markAsRead = async (req: Request, res: Response) => {
     const { messageIds } = req.body;
     const userId = req.user.userId;
 
-    const result = await MessageService.markAsRead(messageIds, userId);
+    const result = await MessageService.markAsRead(req, messageIds, userId);
 
     return response(res, result.status, result.message, result.data);
   } catch (error: any) {
@@ -59,7 +60,7 @@ const deleteMessage = async (req: Request, res: Response) => {
     const { messageId } = req.params;
     const userId = req.user.userId; // injected via auth middleware
 
-    const result = await MessageService.deleteMessage(messageId, userId);
+    const result = await MessageService.deleteMessage(req, messageId, userId);
 
     return response(res, result.status, result.message);
   } catch (error: any) {

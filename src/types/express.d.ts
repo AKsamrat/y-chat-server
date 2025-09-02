@@ -10,6 +10,10 @@ declare global {
       io: Server;
       socketUserMap: Map<string, string>;
     }
+    interface Response {
+      io: Server;
+      socketUserMap: Map<string, string>;
+    }
   }
 }
 declare module "socket.io" {
